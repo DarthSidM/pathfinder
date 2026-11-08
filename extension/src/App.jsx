@@ -1,122 +1,91 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+
+import { useState } from "react";
+import { Search, Loader2 } from "lucide-react";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [loading, setLoading] = useState(false);
+  const [snapshot, setSnapshot] = useState(null);
+  const [error, setError] = useState("");
+
+  async function handleAnalyze() {
+    setLoading(true);
+    setError("");
+    setSnapshot(null);
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "ANALYZE_FORM"
+      });
+
+      if (!response?.success) {
+        throw new Error(response?.error || "Analysis failed.");
+      }
+
+      if (!response.data?.success) {
+        throw new Error(
+          response.data?.error || "Could not inspect the page."
+        );
+      }
+
+      setSnapshot(response.data.snapshot);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
+    <div style={{ padding: "20px", fontFamily: "Arial" }}>
+      <h2>Job Application Assistant</h2>
+
+      <button
+        onClick={handleAnalyze}
+        disabled={loading}
+      >
+        {loading ? (
+          <>
+            <Loader2 size={16} /> Analyzing...
+          </>
+        ) : (
+          <>
+            <Search size={16} /> Analyze Form
+          </>
+        )}
+      </button>
+
+      {error && (
+        <p style={{ color: "red" }}>{error}</p>
+      )}
+
+      {snapshot && (
         <div>
-          <h1>Get started</h1>
+          <h3>{snapshot.title}</h3>
+
           <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
+            Found {snapshot.field_count} fields
           </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+          {snapshot.fields.map(field => (
+            <div
+              key={field.element_id}
+              style={{
+                border: "1px solid #ddd",
+                padding: "10px",
+                marginBottom: "10px",
+                borderRadius: "6px"
+              }}
+            >
+              <strong>{field.label || field.name || field.element_id}</strong>
+              <p>Type: {field.type}</p>
+              <p>Required: {field.required ? "Yes" : "No"}</p>
+              <p>Element ID: {field.element_id}</p>
+            </div>
+          ))}
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      )}
+    </div>
+  );
 }
 
-export default App
+export default App;

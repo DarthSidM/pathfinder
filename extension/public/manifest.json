@@ -14,9 +14,11 @@
   ],
 
   "host_permissions": [
-    "http://localhost:8000/*"
-  ],
-
+    "http://localhost:8000/*",
+    "https://*/*",
+    "http://*/*"
+  ], 
+  
   "background": {
     "service_worker": "background.js",
     "type": "module"
@@ -28,18 +30,5 @@
 
   "action": {
     "default_title": "Open Job Application Assistant"
-  },
-
-  "content_scripts": [
-    {
-      "matches": [
-        "http://*/*",
-        "https://*/*"
-      ],
-      "js": [
-        "content.js"
-      ],
-      "run_at": "document_idle"
-    }
-  ]
+  }
 }
