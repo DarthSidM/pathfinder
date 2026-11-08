@@ -1,16 +1,15 @@
-
 import { useState } from "react";
 import { Search, Loader2 } from "lucide-react";
 
 function App() {
   const [loading, setLoading] = useState(false);
-  const [snapshot, setSnapshot] = useState(null);
+  const [analysis, setAnalysis] = useState(null);
   const [error, setError] = useState("");
 
   async function handleAnalyze() {
     setLoading(true);
     setError("");
-    setSnapshot(null);
+    setAnalysis(null);
 
     try {
       const response = await chrome.runtime.sendMessage({
@@ -23,11 +22,12 @@ function App() {
 
       if (!response.data?.success) {
         throw new Error(
-          response.data?.error || "Could not inspect the page."
+          response.data?.error || "Form analysis failed."
         );
       }
 
-      setSnapshot(response.data.snapshot);
+      setAnalysis(response.data.analysis);
+
     } catch (err) {
       setError(err.message);
     } finally {
@@ -58,29 +58,71 @@ function App() {
         <p style={{ color: "red" }}>{error}</p>
       )}
 
-      {snapshot && (
+      {analysis && (
         <div>
-          <h3>{snapshot.title}</h3>
+          <h3>{analysis.form_title || "Detected Form"}</h3>
 
           <p>
-            Found {snapshot.field_count} fields
+            Found {analysis.questions.length} questions
           </p>
 
-          {snapshot.fields.map(field => (
+          {/* Detected questions */}
+          <h3>Questions</h3>
+
+          {analysis.questions.map(question => (
             <div
-              key={field.element_id}
+              key={question.question_id}
               style={{
                 border: "1px solid #ddd",
-                padding: "10px",
-                marginBottom: "10px",
+                padding: "12px",
+                marginBottom: "12px",
                 borderRadius: "6px"
               }}
             >
-              <strong>{field.label || field.name || field.element_id}</strong>
-              <p>Type: {field.type}</p>
-              <p>Required: {field.required ? "Yes" : "No"}</p>
-              <p>Element ID: {field.element_id}</p>
+              <strong>{question.question_text}</strong>
+
+              <p>Type: {question.answer_type}</p>
+
+              <p>
+                Required: {question.required ? "Yes" : "No"}
+              </p>
+
+              <p>
+                Confidence: {(question.confidence * 100).toFixed(0)}%
+              </p>
+
+              <p>
+                Controls: {question.control_ids.join(", ")}
+              </p>
+
+              {question.options.length > 0 && (
+                <ul>
+                  {question.options.map((option, index) => (
+                    <li key={`${option.control_id}-${index}`}>
+                      {option.label} ({option.control_id})
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
+          ))}
+
+          {/* Ignored controls */}
+          <h3>Ignored Controls</h3>
+
+          {analysis.ignored_controls.map((control, index) => (
+            <p key={`${control.control_id}-${index}`}>
+              {control.control_id}: {control.reason}
+            </p>
+          ))}
+
+          {/* Unclassified controls */}
+          <h3>Unclassified Controls</h3>
+
+          {analysis.unclassified_controls.map((control, index) => (
+            <p key={index}>
+              {control.control_id}: {control.reason}
+            </p>
           ))}
         </div>
       )}
