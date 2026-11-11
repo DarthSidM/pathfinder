@@ -1,6 +1,6 @@
 import os
 from openai import AsyncOpenAI
-
+import json
 from backend.config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_NAME
 
 
@@ -29,6 +29,11 @@ class LLMProvider:
                 {"role": "user", "content": question},
             ],
             temperature=0,
+            extra_body={
+                "reasoning": {
+                    "enabled": False
+                }
+            },
         )
 
         content = response.choices[0].message.content
@@ -43,3 +48,40 @@ class LLMProvider:
 
     async def close(self):
         await self._client.close()
+
+    async def ask_json(self, question: str, system_prompt: str, schema: dict, schema_name: str) -> dict:
+        """
+        Same as ask(), but constrains output to a JSON schema.
+        Returns the parsed dict.
+        """
+        response = await self._client.chat.completions.create(
+            model=self._model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": question},
+            ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": schema_name,
+                    "strict": True,
+                    "schema": schema,
+                },
+            },
+            temperature=0,
+            extra_body={
+                "reasoning": {
+                    "enabled": False
+                }
+            },
+        )
+        content = response.choices[0].message.content
+
+        if not content or not content.strip():
+            raise ValueError(
+                f"LLM returned empty content. "
+                f"Finish reason: {response.choices[0].finish_reason}"
+            )
+
+        
+        return json.loads(content)

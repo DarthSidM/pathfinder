@@ -27,7 +27,33 @@ Rules:
 async def response(state: AgentState) -> dict:
     writer = get_stream_writer()
 
-    # ---- Error path: knowledge failed to load ----
+    # ---- Path A: an upstream node already decided the response ----
+    # (knowledge_update sets response_kind/text/reason and expects us
+    #  to just emit it, not re-run the LLM.)
+    if state.get("response_text"):
+        kind = state.get("response_kind") or "bot_chat"
+
+        if kind == "task_complete":
+            writer({
+                "type": "TASK_COMPLETE",
+                "payload": {
+                    "summary": state["response_text"],
+                    "fields_filled": state.get("actions_taken", 0),
+                    "fields_skipped": 0,
+                },
+            })
+        else:
+            writer({
+                "type": "BOT_CHAT",
+                "payload": {
+                    "text": state["response_text"],
+                    "reason": state.get("response_reason"),
+                },
+            })
+
+        return _reset_state()
+
+    # ---- Path B: knowledge failed to load ----
     if state.get("knowledge_error"):
         writer({
             "type": "BOT_CHAT",
@@ -38,7 +64,7 @@ async def response(state: AgentState) -> dict:
         })
         return _reset_state()
 
-    # ---- Normal path: LLM answer grounded in knowledge ----
+    # ---- Path C: LLM answer grounded in knowledge (chat_only) ----
     question = state.get("user_message", "").strip()
     knowledge = state.get("knowledge") or {}
 
@@ -64,7 +90,7 @@ async def response(state: AgentState) -> dict:
         answer = await llm.ask(
             question=(
                 f"Question: {question}\n\n"
-                f"Knowledge:\n{yaml.safe_dump(knowledge, sort_keys=False)}"
+                f"Knowledge:\n{yaml.safe_dump(knowledge, sort_keys=False, allow_unicode=True)}"
             ),
             system_prompt=SYSTEM_PROMPT,
         )

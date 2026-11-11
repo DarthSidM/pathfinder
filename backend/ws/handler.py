@@ -77,7 +77,6 @@ async def _handle_human_chat(
     initial_state = {
         "user_message": user_message,
         "snapshot": snapshot,
-        "intent": "chat_only",  # hardcoded for this test
     }
 
     try:
