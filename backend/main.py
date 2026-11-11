@@ -1,13 +1,21 @@
-from fastapi import FastAPI
-from dotenv import load_dotenv
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, WebSocket
 
-from form_analyzer import router as form_analyzer_router
-from interactor import router as interactor_router
+from backend.graph.build import build_graph
+from backend.ws.session import SessionStore
+from backend.ws.handler import handle_websocket
 
 
-load_dotenv()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    graph = build_graph()
+    app.state.sessions = SessionStore(graph)
+    yield
 
-app = FastAPI()
 
-app.include_router(form_analyzer_router)
-app.include_router(interactor_router)
+app = FastAPI(lifespan=lifespan)
+
+
+@app.websocket("/ws")
+async def ws_endpoint(websocket: WebSocket):
+    await handle_websocket(websocket, websocket.app.state.sessions)

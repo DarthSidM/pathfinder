@@ -1,7 +1,10 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv(dotenv_path=".env")
+
+BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(dotenv_path=BASE_DIR / ".env")
 
 LLM_BASE_URL= os.getenv("LLM_BASE_URL")
 LLM_API_KEY= os.getenv("LLM_API_KEY")
