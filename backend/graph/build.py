@@ -50,13 +50,20 @@ def build_graph():
     )
 
     g.add_edge("knowledge_update", "response")
-    g.add_edge("interact", "execute_action")
+    g.add_conditional_edges(
+        "interact",
+        lambda s: "execute" if s["decision"]["status"] == "action" else "response",
+        {
+            "execute": "execute_action",
+            "response": "response",
+        }
+    )
     g.add_edge("execute_action", "verify_result")
 
     g.add_conditional_edges(
         "verify_result",
-        lambda s: "more" if s["actions_taken"] < STUB_LOOP_LIMIT else "done",
-        {"more": "interact", "done": "response"},
+        lambda s: "response" if s.get("response_text") else "interact",
+        {"response": "response", "interact": "interact"},
     )
 
     g.add_edge("response", END)

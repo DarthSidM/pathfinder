@@ -1,4 +1,5 @@
 from langgraph.types import interrupt
+
 from ..state import AgentState
 
 
@@ -8,15 +9,8 @@ async def execute_action(state: AgentState) -> dict:
 
     action_id = f"act_{state.get('actions_taken', 0) + 1}"
 
-    # No writer() call here. Just interrupt with the payload.
-    # run_turn will read this payload from the __interrupt__ event
-    # in the updates stream and emit EXECUTE_ACTION exactly once.
-    result = interrupt({
-        "action_id": action_id,
-        "action": action,
-    })
+    # interrupt() re-executes the node on resume — no side effects here.
+    # The handler emits EXECUTE_ACTION from the __interrupt__ event.
+    result = interrupt({"action_id": action_id, "action": action})
 
-    return {
-        "action_result": result,
-        "pending_action_id": None,
-    }
+    return {"action_result": result, "pending_action_id": None}
